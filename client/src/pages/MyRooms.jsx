@@ -80,13 +80,13 @@ export default function MyRooms() {
               className="problem-card"
               onClick={() => navigate(`/room/${r.roomCode}`)}
             >
-              <div>
+              {/* <div>
                 <div className="title">{r.problem?.title || 'Unknown Problem'}</div>
                 <div className="meta">
                   <span className="badge badge-info">{r.currentLanguage}</span>
                   <span>• {formatTime(r.updatedAt || r.createdAt)}</span>
                 </div>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm" style={{ color: 'var(--accent-light)' }}>
                   {r.roomCode}

@@ -1,290 +1,994 @@
 const Room = require('../models/Room');
 const Problem = require('../models/Problem');
 const Contribution = require('../models/Contribution');
-const { DEFAULT_SNIPPETS } = require('../config/constants');
+const {
+  DEFAULT_SNIPPETS,
+} = require('../config/constants');
 
-// ── Create a new collaboration room ───────────────────────
+
+// ============================================================
+// SAFE PROBLEM FIELDS
+//
+// These fields can be sent to the frontend.
+// Hidden test cases are intentionally NOT included.
+// ============================================================
+
+const SAFE_PROBLEM_FIELDS =
+  'title slug difficulty description examples constraints tags';
+
+
+// ============================================================
+// CREATE A NEW COLLABORATION ROOM
+// ============================================================
+
 exports.createRoom = async (req, res) => {
   try {
-    const { problemId, language } = req.body;
+    const {
+      problemId,
+      language,
 
-    const problem = await Problem.findById(problemId);
+      // NEW:
+      // SoloEditor can send the code that the user
+      // has already written.
+      currentCode,
+    } = req.body;
+
+
+    // --------------------------------------------------------
+    // Validate problem
+    // --------------------------------------------------------
+
+    const problem =
+      await Problem.findById(problemId);
+
     if (!problem) {
-      return res.status(404).json({ message: 'Problem not found' });
+      return res.status(404).json({
+        message: 'Problem not found',
+      });
     }
 
-    const lang = language || 'python';
+
+    // --------------------------------------------------------
+    // Select language
+    // --------------------------------------------------------
+
+    const lang =
+      language || 'python';
+
+
+    // --------------------------------------------------------
+    // Starter code
+    // --------------------------------------------------------
+
     const starterCode =
-      problem.starterCode?.[lang] || DEFAULT_SNIPPETS[lang] || '';
+      problem.starterCode?.[lang] ||
+      DEFAULT_SNIPPETS[lang] ||
+      '';
 
-    const roomCode = await generateUniqueRoomCode();
 
-    const room = await Room.create({
-      roomCode,
-      problem: problem._id,
-      createdBy: req.user._id,
-      members: [{ user: req.user._id, name: req.user.name }],
-      currentCode: starterCode,
-      currentLanguage: lang,
-    });
+    // --------------------------------------------------------
+    // IMPORTANT:
+    // If Solo Mode sends existing code, preserve it.
+    //
+    // Otherwise use problem starter code.
+    // --------------------------------------------------------
 
-    // initialise contribution record for the creator
+    const initialCode =
+      typeof currentCode === 'string' &&
+      currentCode.trim().length > 0
+        ? currentCode
+        : starterCode;
+
+
+    // --------------------------------------------------------
+    // Generate room code
+    // --------------------------------------------------------
+
+    const roomCode =
+      await generateUniqueRoomCode();
+
+
+    // --------------------------------------------------------
+    // Create room
+    // --------------------------------------------------------
+
+    const room =
+      await Room.create({
+        roomCode,
+
+        problem:
+          problem._id,
+
+        createdBy:
+          req.user._id,
+
+        members: [
+          {
+            user:
+              req.user._id,
+
+            name:
+              req.user.name,
+          },
+        ],
+
+        currentCode:
+          initialCode,
+
+        currentLanguage:
+          lang,
+
+        status:
+          'active',
+      });
+
+
+    // --------------------------------------------------------
+    // Create contribution record for creator
+    // --------------------------------------------------------
+
     await Contribution.create({
-      room: room._id,
-      roomCode: room.roomCode,
-      user: req.user._id,
-      userName: req.user.name,
+      room:
+        room._id,
+
+      roomCode:
+        room.roomCode,
+
+      user:
+        req.user._id,
+
+      userName:
+        req.user.name,
     });
 
-    const populated = await room.populate('problem', 'title slug difficulty');
-    res.status(201).json({
-      roomCode: room.roomCode,
-      roomId: room._id,
-      problemTitle: problem.title,
-      currentCode: room.currentCode,
-      currentLanguage: room.currentLanguage,
+
+    // --------------------------------------------------------
+    // Populate safe problem information
+    // --------------------------------------------------------
+
+    await room.populate(
+      'problem',
+      SAFE_PROBLEM_FIELDS
+    );
+
+
+    // --------------------------------------------------------
+    // Response
+    // --------------------------------------------------------
+
+    return res.status(201).json({
+      roomCode:
+        room.roomCode,
+
+      roomId:
+        room._id,
+
+      problem:
+        room.problem,
+
+      problemTitle:
+        problem.title,
+
+      currentCode:
+        room.currentCode,
+
+      currentLanguage:
+        room.currentLanguage,
+
+      status:
+        room.status,
     });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Create room error:',
+      err
+    );
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
-// ── Join room by room code ────────────────────────────────
+
+// ============================================================
+// JOIN ROOM BY ROOM CODE
+// ============================================================
+
 exports.joinRoom = async (req, res) => {
   try {
-    const { roomCode } = req.params;
+    const {
+      roomCode,
+    } = req.params;
 
-    const room = await Room.findOne({ roomCode: roomCode.toUpperCase() }).populate('problem', 'title slug difficulty');
+
+    // --------------------------------------------------------
+    // Find room
+    // --------------------------------------------------------
+
+    const room =
+      await Room.findOne({
+        roomCode:
+          roomCode.toUpperCase(),
+      })
+        .populate(
+          'problem',
+          SAFE_PROBLEM_FIELDS
+        );
+
+
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
-    }
-    if (room.status !== 'active') {
-      return res.status(400).json({ message: 'Room is no longer active' });
+      return res.status(404).json({
+        message: 'Room not found',
+      });
     }
 
+
+    if (
+      room.status !== 'active'
+    ) {
+      return res.status(400).json({
+        message:
+          'Room is no longer active',
+      });
+    }
+
+
+    // --------------------------------------------------------
     // Add member if not already present
-    const alreadyMember = room.members.some(
-      (m) => m.user && m.user.toString() === req.user._id.toString()
-    );
+    // --------------------------------------------------------
+
+    const alreadyMember =
+      room.members.some(
+        (member) =>
+          member.user &&
+          member.user.toString() ===
+            req.user._id.toString()
+      );
+
+
     if (!alreadyMember) {
-      room.members.push({ user: req.user._id, name: req.user.name });
+      room.members.push({
+        user:
+          req.user._id,
+
+        name:
+          req.user.name,
+      });
     }
 
-    // ensure contribution record exists
+
+    // --------------------------------------------------------
+    // Ensure contribution record exists
+    // --------------------------------------------------------
+
     await Contribution.findOneAndUpdate(
-      { room: room._id, user: req.user._id },
-      {},
-      { upsert: true, setDefaultsOnInsert: true }
+      {
+        room:
+          room._id,
+
+        user:
+          req.user._id,
+      },
+      {
+        $setOnInsert: {
+          room:
+            room._id,
+
+          roomCode:
+            room.roomCode,
+
+          user:
+            req.user._id,
+
+          userName:
+            req.user.name,
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
     );
+
+
+    // --------------------------------------------------------
+    // Save room
+    // --------------------------------------------------------
 
     await room.save();
 
-    res.json({
-      roomCode: room.roomCode,
-      roomId: room._id,
-      problemId: room.problem._id,
-      problemTitle: room.problem.title,
-      difficulty: room.problem.difficulty,
-      currentCode: room.currentCode,
-      currentLanguage: room.currentLanguage,
-      members: room.members.map((m) => ({ name: m.name, joinedAt: m.joinedAt })),
+
+    // --------------------------------------------------------
+    // Response
+    // --------------------------------------------------------
+
+    return res.json({
+      roomCode:
+        room.roomCode,
+
+      roomId:
+        room._id,
+
+      problem:
+        room.problem,
+
+      problemId:
+        room.problem?._id,
+
+      problemTitle:
+        room.problem?.title,
+
+      difficulty:
+        room.problem?.difficulty,
+
+      currentCode:
+        room.currentCode,
+
+      currentLanguage:
+        room.currentLanguage,
+
+      status:
+        room.status,
+
+      members:
+        room.members.map(
+          (member) => ({
+            name:
+              member.name,
+
+            joinedAt:
+              member.joinedAt,
+          })
+        ),
     });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Join room error:',
+      err
+    );
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
-// ── Get room info ─────────────────────────────────────────
+
+// ============================================================
+// GET ROOM INFO
+// ============================================================
+
 exports.getRoom = async (req, res) => {
   try {
-    const room = await Room.findOne({ roomCode: req.params.roomCode.toUpperCase() })
-      .populate('problem', 'title slug difficulty description examples constraints timeLimit memoryLimit')
-      .populate('members.user', 'name avatarColor');
+    const room =
+      await Room.findOne({
+        roomCode:
+          req.params.roomCode.toUpperCase(),
+      })
+
+        // IMPORTANT:
+        // Return complete safe problem details for
+        // the Problem tab in Room.jsx.
+        .populate(
+          'problem',
+          SAFE_PROBLEM_FIELDS
+        )
+
+        .populate(
+          'members.user',
+          'name avatarColor'
+        );
+
 
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+      return res.status(404).json({
+        message:
+          'Room not found',
+      });
     }
 
-    res.json({
-      roomCode: room.roomCode,
-      roomId: room._id,
-      problem: room.problem,
-      currentCode: room.currentCode,
-      currentLanguage: room.currentLanguage,
-      members: room.members.map((m) => ({
-        name: m.name,
-        avatarColor: m.user?.avatarColor || '#6366f1',
-        joinedAt: m.joinedAt,
-      })),
-      versions: room.versions.slice(-20).reverse(),
-      chat: room.chat.slice(-100),
-      status: room.status,
+
+    return res.json({
+      roomCode:
+        room.roomCode,
+
+      roomId:
+        room._id,
+
+      // Full safe problem information
+      problem:
+        room.problem,
+
+      currentCode:
+        room.currentCode,
+
+      currentLanguage:
+        room.currentLanguage,
+
+      members:
+        room.members.map(
+          (member) => ({
+            userId:
+              member.user?._id,
+
+            name:
+              member.name ||
+              member.user?.name,
+
+            avatarColor:
+              member.user
+                ?.avatarColor ||
+              '#6366f1',
+
+            joinedAt:
+              member.joinedAt,
+          })
+        ),
+
+      versions:
+        room.versions
+          .slice(-20)
+          .reverse(),
+
+      chat:
+        room.chat
+          .slice(-100),
+
+      status:
+        room.status,
+
+      createdAt:
+        room.createdAt,
+
+      updatedAt:
+        room.updatedAt,
     });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Get room error:',
+      err
+    );
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
-// ── Save a code version / snapshot ─────────────────────────
+
+// ============================================================
+// SAVE A CODE VERSION / SNAPSHOT
+// ============================================================
+
 exports.saveVersion = async (req, res) => {
   try {
-    const { roomCode } = req.params;
-    const { code, language, label } = req.body;
+    const {
+      roomCode,
+    } = req.params;
 
-    const room = await Room.findOne({ roomCode: roomCode.toUpperCase() });
+    const {
+      code,
+      language,
+      label,
+    } = req.body;
+
+
+    // --------------------------------------------------------
+    // Find room
+    // --------------------------------------------------------
+
+    const room =
+      await Room.findOne({
+        roomCode:
+          roomCode.toUpperCase(),
+      });
+
+
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+      return res.status(404).json({
+        message:
+          'Room not found',
+      });
     }
+
+
+    // --------------------------------------------------------
+    // Save version
+    // --------------------------------------------------------
 
     room.versions.push({
       code,
+
       language,
-      label: label || '',
-      savedBy: req.user._id,
-      savedByName: req.user.name,
+
+      label:
+        label || '',
+
+      savedBy:
+        req.user._id,
+
+      savedByName:
+        req.user.name,
     });
 
-    // update contribution count
+
+    // --------------------------------------------------------
+    // Update contribution statistics
+    // --------------------------------------------------------
+
     await Contribution.updateOne(
-      { room: room._id, user: req.user._id },
-      { $inc: { codeSaves: 1 } }
+      {
+        room:
+          room._id,
+
+        user:
+          req.user._id,
+      },
+
+      {
+        $inc: {
+          codeSaves: 1,
+        },
+      }
     );
 
+
     await room.save();
-    res.status(201).json({
-      message: 'Version saved',
-      version: room.versions[room.versions.length - 1],
+
+
+    return res.status(201).json({
+      message:
+        'Version saved',
+
+      version:
+        room.versions[
+          room.versions.length - 1
+        ],
     });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Save version error:',
+      err
+    );
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
-// ── Restore a previous version ────────────────────────────
-exports.restoreVersion = async (req, res) => {
-  try {
-    const { roomCode, versionId } = req.params;
 
-    const room = await Room.findOne({ roomCode: roomCode.toUpperCase() });
+// ============================================================
+// RESTORE A PREVIOUS VERSION
+// ============================================================
+
+exports.restoreVersion = async (
+  req,
+  res
+) => {
+  try {
+    const {
+      roomCode,
+      versionId,
+    } = req.params;
+
+
+    // --------------------------------------------------------
+    // Find room
+    // --------------------------------------------------------
+
+    const room =
+      await Room.findOne({
+        roomCode:
+          roomCode.toUpperCase(),
+      });
+
+
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+      return res.status(404).json({
+        message:
+          'Room not found',
+      });
     }
 
-    const version = room.versions.id(versionId);
+
+    // --------------------------------------------------------
+    // Find version
+    // --------------------------------------------------------
+
+    const version =
+      room.versions.id(
+        versionId
+      );
+
+
     if (!version) {
-      return res.status(404).json({ message: 'Version not found' });
+      return res.status(404).json({
+        message:
+          'Version not found',
+      });
     }
 
-    // Save the current code as a new version before restoring
+
+    // --------------------------------------------------------
+    // Save current code before restoring
+    // --------------------------------------------------------
+
     room.versions.push({
-      code: room.currentCode,
-      language: room.currentLanguage,
-      label: 'Auto-save before restore',
-      savedBy: req.user._id,
-      savedByName: req.user.name,
+      code:
+        room.currentCode,
+
+      language:
+        room.currentLanguage,
+
+      label:
+        'Auto-save before restore',
+
+      savedBy:
+        req.user._id,
+
+      savedByName:
+        req.user.name,
     });
 
-    room.currentCode = version.code;
-    room.currentLanguage = version.language;
+
+    // --------------------------------------------------------
+    // Restore version
+    // --------------------------------------------------------
+
+    room.currentCode =
+      version.code;
+
+    room.currentLanguage =
+      version.language;
+
 
     await room.save();
-    res.json({
-      message: 'Version restored',
-      code: version.code,
-      language: version.language,
+
+
+    return res.json({
+      message:
+        'Version restored',
+
+      code:
+        version.code,
+
+      language:
+        version.language,
     });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Restore version error:',
+      err
+    );
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
-// ── Get room versions (history) ────────────────────────────
-exports.getVersions = async (req, res) => {
+
+// ============================================================
+// GET ROOM VERSIONS
+// ============================================================
+
+exports.getVersions = async (
+  req,
+  res
+) => {
   try {
-    const room = await Room.findOne({ roomCode: req.params.roomCode.toUpperCase() })
-      .select('versions');
+    const room =
+      await Room.findOne({
+        roomCode:
+          req.params.roomCode.toUpperCase(),
+      })
+        .select(
+          'versions'
+        );
+
+
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+      return res.status(404).json({
+        message:
+          'Room not found',
+      });
     }
-    res.json(room.versions.reverse().slice(0, 50));
+
+
+    const versions =
+      [...room.versions]
+        .reverse()
+        .slice(0, 50);
+
+
+    return res.json(
+      versions
+    );
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Get versions error:',
+      err
+    );
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
-// ── Post a chat message ───────────────────────────────────
-exports.postChat = async (req, res) => {
+
+// ============================================================
+// POST CHAT MESSAGE
+// ============================================================
+
+exports.postChat = async (
+  req,
+  res
+) => {
   try {
-    const { roomCode } = req.params;
-    const { text } = req.body;
+    const {
+      roomCode,
+    } = req.params;
 
-    if (!text || !text.trim()) {
-      return res.status(400).json({ message: 'Message cannot be empty' });
+    const {
+      text,
+    } = req.body;
+
+
+    // --------------------------------------------------------
+    // Validate
+    // --------------------------------------------------------
+
+    if (
+      !text ||
+      !text.trim()
+    ) {
+      return res.status(400).json({
+        message:
+          'Message cannot be empty',
+      });
     }
 
-    const room = await Room.findOne({ roomCode: roomCode.toUpperCase() });
+
+    // --------------------------------------------------------
+    // Find room
+    // --------------------------------------------------------
+
+    const room =
+      await Room.findOne({
+        roomCode:
+          roomCode.toUpperCase(),
+      });
+
+
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+      return res.status(404).json({
+        message:
+          'Room not found',
+      });
     }
+
+
+    // --------------------------------------------------------
+    // Create message
+    // --------------------------------------------------------
 
     const msg = {
-      sender: req.user._id,
-      senderName: req.user.name,
-      text: text.trim(),
-    };
-    room.chat.push(msg);
-    await room.save();
+      sender:
+        req.user._id,
 
-    await Contribution.updateOne(
-      { room: room._id, user: req.user._id },
-      { $inc: { chatMessages: 1 } }
+      senderName:
+        req.user.name,
+
+      text:
+        text.trim(),
+    };
+
+
+    room.chat.push(
+      msg
     );
 
-    res.status(201).json(msg);
+
+    await room.save();
+
+
+    // --------------------------------------------------------
+    // Update contributions
+    // --------------------------------------------------------
+
+    await Contribution.updateOne(
+      {
+        room:
+          room._id,
+
+        user:
+          req.user._id,
+      },
+
+      {
+        $inc: {
+          chatMessages: 1,
+        },
+      }
+    );
+
+
+    return res
+      .status(201)
+      .json(msg);
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Post chat error:',
+      err
+    );
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
-// ── Get contribution analytics for a room ────────────────
-exports.getContributions = async (req, res) => {
+
+// ============================================================
+// GET CONTRIBUTION ANALYTICS
+// ============================================================
+
+exports.getContributions = async (
+  req,
+  res
+) => {
   try {
-    const room = await Room.findOne({ roomCode: req.params.roomCode.toUpperCase() }).select('_id roomCode');
+    const room =
+      await Room.findOne({
+        roomCode:
+          req.params.roomCode.toUpperCase(),
+      })
+        .select(
+          '_id roomCode'
+        );
+
+
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
+      return res.status(404).json({
+        message:
+          'Room not found',
+      });
     }
 
-    const contributions = await Contribution.find({ room: room._id }).sort({ charactersAdded: -1 });
-    res.json(contributions);
+
+    const contributions =
+      await Contribution.find({
+        room:
+          room._id,
+      })
+        .sort({
+          charactersAdded: -1,
+        });
+
+
+    return res.json(
+      contributions
+    );
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Get contributions error:',
+      err
+    );
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
-// ── List rooms created by / joined by the user ────────────
-exports.getMyRooms = async (req, res) => {
+
+// ============================================================
+// LIST ROOMS CREATED BY / JOINED BY USER
+// ============================================================
+
+// ============================================================
+// LIST ACTIVE ROOMS FOR USER
+// ============================================================
+
+exports.getMyRooms = async (
+  req,
+  res
+) => {
   try {
-    const rooms = await Room.find({ 'members.user': req.user._id })
-      .populate('problem', 'title slug difficulty')
-      .select('roomCode problem currentLanguage status createdAt')
-      .sort({ updatedAt: -1 })
-      .limit(50);
-    res.json(rooms);
+    const rooms =
+      await Room.find({
+        'members.user':
+          req.user._id,
+
+        // IMPORTANT:
+        // My Rooms currently displays ACTIVE rooms only.
+        status:
+          'active',
+      })
+
+        .populate(
+          'problem',
+          'title slug difficulty'
+        )
+
+        .select(
+          'roomCode problem currentLanguage status createdAt updatedAt'
+        )
+
+        .sort({
+          updatedAt:
+            -1,
+        })
+
+        .limit(50);
+
+    return res.json(
+      rooms
+    );
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(
+      'Get my rooms error:',
+      err
+    );
+
+    return res.status(500).json({
+      message:
+        err.message,
+    });
   }
 };
 
-// ── Helper: generate a unique room code ───────────────────
+
+// ============================================================
+// HELPER: GENERATE UNIQUE ROOM CODE
+// ============================================================
+
 async function generateUniqueRoomCode() {
-  const Room = require('../models/Room');
   let code;
+
   let attempts = 0;
+
+
   do {
-    code = Room.generateRoomCode();
-    const existing = await Room.findOne({ roomCode: code });
-    if (!existing) return code;
+    code =
+      Room.generateRoomCode();
+
+    const existing =
+      await Room.findOne({
+        roomCode: code,
+      });
+
+
+    if (!existing) {
+      return code;
+    }
+
+
     attempts++;
-  } while (attempts < 10);
-  return Room.generateRoomCode() + Date.now().toString().slice(-2);
+
+  } while (
+    attempts < 10
+  );
+
+
+  // Extremely unlikely fallback
+  return (
+    Room.generateRoomCode() +
+    Date.now()
+      .toString()
+      .slice(-2)
+  );
 }
