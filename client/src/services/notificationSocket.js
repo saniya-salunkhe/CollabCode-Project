@@ -10,13 +10,25 @@ let notificationSocket =
 // ============================================================
 // GET SOCKET SERVER URL
 // ============================================================
+//
+// Development:
+// http://localhost:5000
+//
+// Production:
+// VITE_SOCKET_URL from Render
+//
+// If only VITE_API_URL exists,
+// automatically remove "/api".
+// ============================================================
 
 const getSocketUrl =
   () => {
+
     if (
       import.meta.env
         .VITE_SOCKET_URL
     ) {
+
       return import.meta.env
         .VITE_SOCKET_URL;
     }
@@ -26,6 +38,7 @@ const getSocketUrl =
       import.meta.env
         .VITE_API_URL
     ) {
+
       return import.meta.env
         .VITE_API_URL
         .replace(
@@ -45,18 +58,42 @@ const getSocketUrl =
 
 export const connectNotificationSocket =
   (token) => {
+
+    // --------------------------------------------------------
+    // REUSE CONNECTED SOCKET
+    // --------------------------------------------------------
+
     if (
       notificationSocket &&
       notificationSocket.connected
     ) {
+
       return notificationSocket;
     }
 
 
-    if (notificationSocket) {
-      notificationSocket.disconnect();
+    // --------------------------------------------------------
+    // CLEAN OLD SOCKET
+    // --------------------------------------------------------
+
+    if (
+      notificationSocket
+    ) {
+
+      notificationSocket
+        .removeAllListeners();
+
+      notificationSocket
+        .disconnect();
+
+      notificationSocket =
+        null;
     }
 
+
+    // --------------------------------------------------------
+    // CREATE SOCKET
+    // --------------------------------------------------------
 
     notificationSocket =
       io(
@@ -83,6 +120,50 @@ export const connectNotificationSocket =
       );
 
 
+    // --------------------------------------------------------
+    // CONNECTION EVENTS
+    // --------------------------------------------------------
+
+    notificationSocket.on(
+      'connect',
+      () => {
+
+        console.log(
+          '🔔 Notification socket connected:',
+          notificationSocket.id
+        );
+      }
+    );
+
+
+    notificationSocket.on(
+      'disconnect',
+      (
+        reason
+      ) => {
+
+        console.log(
+          '🔕 Notification socket disconnected:',
+          reason
+        );
+      }
+    );
+
+
+    notificationSocket.on(
+      'connect_error',
+      (
+        err
+      ) => {
+
+        console.error(
+          'Notification socket connection error:',
+          err.message
+        );
+      }
+    );
+
+
     return notificationSocket;
   };
 
@@ -97,15 +178,21 @@ export const getNotificationSocket =
 
 
 // ============================================================
-// DISCONNECT
+// DISCONNECT SOCKET
 // ============================================================
 
 export const disconnectNotificationSocket =
   () => {
+
     if (
       notificationSocket
     ) {
-      notificationSocket.disconnect();
+
+      notificationSocket
+        .removeAllListeners();
+
+      notificationSocket
+        .disconnect();
 
       notificationSocket =
         null;
