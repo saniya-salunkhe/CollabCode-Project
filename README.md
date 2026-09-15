@@ -1,195 +1,489 @@
-# CollabCode: A Real-Time Collaborative Coding, Peer Review and Contribution Analytics Platform
+CollabCode is a real-time collaborative coding platform where users can solve programming problems, collaborate with other registered users, request help, review solutions, and track their coding activity.
 
-A web platform where students solve coding problems individually or collaboratively in real time — with peer code review, version history, and contribution analytics built in.
+The project combines a coding-practice platform with real-time collaboration features such as synchronized code editing, room invitations, chat, notifications, peer review, and a structured help-request workflow.
 
-## Project Structure
+🌐 Live Demo
 
-```
+Frontend:
+https://collabcode-project.onrender.com
+
+Backend API:
+https://collabcode-api-jok1.onrender.com
+
+✨ Key Features
+
+User Registration and Login
+
+JWT-based Authentication
+
+Coding Problem Dashboard
+
+Monaco Code Editor
+
+Multiple Programming Language Support
+
+Run and Test Code
+
+Hidden Test Cases
+
+Custom Test Cases
+
+Code Submission History
+
+Real-Time Collaborative Coding
+
+Create and Join Coding Rooms
+
+Invite Registered Users
+
+Accept or Decline Room Invitations
+
+Real-Time Code Synchronization
+
+Online User Tracking
+
+Real-Time Chat
+
+Code Version History
+
+Peer Review
+
+Contribution Tracking
+
+Request Help
+
+Accept Help Requests
+
+Solution Explanation
+
+Resolve Help or Ask Again
+
+Real-Time Notifications
+
+My Rooms
+
+My Help Requests
+
+Leaderboard
+
+🧑‍💻 Supported Languages
+
+Java
+
+Python
+
+C
+
+C++
+
+JavaScript
+
+🛠️ Tech Stack
+
+Frontend
+
+React.js
+
+Vite
+
+React Router
+
+Axios
+
+Monaco Editor
+
+Socket.io Client
+
+Backend
+
+Node.js
+
+Express.js
+
+Socket.io
+
+JWT
+
+bcryptjs
+
+Database
+
+MongoDB
+
+MongoDB Atlas
+
+Mongoose
+
+Code Execution
+
+Judge0 API
+
+Deployment
+
+Render Static Site
+
+Render Web Service
+
+MongoDB Atlas
+
+🏗️ System Architecture
+
+┌──────────────────────────────┐
+│      React + Vite Client     │
+│  Monaco Editor + Socket.io   │
+└───────────────┬──────────────┘
+                │
+        REST API + Socket.io
+                │
+                ▼
+┌──────────────────────────────┐
+│    Node.js + Express API     │
+│   JWT + Socket.io Server     │
+└──────────────┬───────────────┘
+               │
+        ┌──────┴───────┐
+        ▼              ▼
+┌──────────────┐  ┌──────────────┐
+│MongoDB Atlas │  │ Judge0 API   │
+│   Database   │  │Code Execution│
+└──────────────┘  └──────────────┘
+
+📂 Project Structure
+
 collabcode/
-├── server/                 # Backend — Node.js + Express + Socket.io + MongoDB
-│   ├── config/             # DB connection, constants, seed script
-│   ├── controllers/        # Auth, Problem, Room, Submission, Review controllers
-│   ├── middleware/         # JWT auth + error handling
-│   ├── models/             # User, Problem, Room, Submission, Review, Contribution
-│   ├── routes/             # REST API routes
-│   ├── services/           # Judge0 code execution service
-│   ├── sockets/            # Socket.io real-time collaboration handler
-│   ├── .env.example        # Environment variables template
-│   └── server.js           # Entry point
 │
-├── client/                 # Frontend — React + Vite + Monaco Editor
+├── client/
 │   ├── src/
-│   │   ├── components/     # Chat, VersionHistory, ReviewPanel, ContributionPanel
-│   │   ├── contexts/       # AuthContext
-│   │   ├── hooks/          # useToast
-│   │   ├── pages/          # Login, Register, Dashboard, ProblemDetail,
-│   │   │                   # SoloEditor, Room, Submissions, Leaderboard, MyRooms
-│   │   ├── services/       # API client + Socket.io client
-│   │   └── utils/          # Constants and helpers
-│   └── index.html
+│   │   ├── components/
+│   │   ├── contexts/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   └── utils/
+│   ├── index.html
+│   └── package.json
 │
+├── server/
+│   ├── config/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── routes/
+│   ├── services/
+│   ├── sockets/
+│   ├── server.js
+│   └── package.json
+│
+├── .gitignore
 └── README.md
-```
 
-## Tech Stack
+⚙️ Installation and Local Setup
 
-### Backend
-- **Node.js + Express** — REST API
-- **Socket.io** — Real-time code sync, chat, cursor tracking
-- **MongoDB + Mongoose** — Database
-- **JWT + bcryptjs** — Authentication
-- **Judge0** — Code execution engine (supports self-hosted or RapidAPI)
+Prerequisites
 
-### Frontend
-- **React 18 + Vite** — Fast dev server & build
-- **Monaco Editor** — The same editor that powers VS Code
-- **Socket.io Client** — Real-time communication
-- **React Router** — Client-side routing
+Before running the project, make sure you have:
 
-## Features (12 Modules)
+Node.js
 
-1. **User Authentication** — Register, login, JWT-secured routes
-2. **Problem Management** — Problems with difficulty, examples, constraints, hidden test cases
-3. **Solo Coding Mode** — Individual editor with run/test/submit
-4. **Collaborative Coding Room** — Multi-user real-time editing via WebSocket
-5. **Monaco Code Editor** — Java, C, C++, Python, JavaScript
-6. **Code Execution** — Judge0 compiles and runs code
-7. **Custom Test Cases** — Test with your own inputs
-8. **Room Chat** — Real-time messaging while solving
-9. **Code Version History** — Save and restore code snapshots
-10. **Peer Code Review** — Line-level comments, suggestions, bug reports, resolution
-11. **Contribution Tracking** — Per-user metrics: chars added/deleted, saves, chat, reviews, submissions
-12. **Submission History** — All attempts with results and code
+npm
 
-## Unique Feature: Dynamic Collaboration
+MongoDB Atlas account or MongoDB connection
 
-A student can start a problem in Solo Mode, and if they get stuck, click **Invite Collaborator** to generate a room code and continue the same solution with a friend in real time.
+Git
 
-```
-Student starts Two Sum alone
-  → Writes some code → Gets stuck
-  → Clicks "Invite Collaborator"
-  → Room code generated: CC7421
-  → Friend joins → Same existing code appears
-  → Both solve together
-```
+1. Clone the Repository
 
-## Setup Instructions
+git clone https://github.com/saniya-salunkhe/CollabCode-Project.git
 
-### Prerequisites
-- Node.js 18+
-- MongoDB (local or Atlas)
-- Judge0 (optional — falls back to simulation mode)
+Move into the project:
 
-### 1. Backend Setup
+cd collabcode
 
-```bash
+2. Backend Setup
+
+Move to the server folder:
+
 cd server
+
+Install dependencies:
+
 npm install
-cp .env.example .env   # Edit with your config
-npm run seed           # Load sample problems
-npm run dev            # Start server on port 5000
-```
 
-### 2. Frontend Setup
+Create a .env file inside the server folder:
 
-```bash
+PORT=5000
+MONGO_URI=YOUR_MONGODB_ATLAS_CONNECTION_STRING
+JWT_SECRET=YOUR_JWT_SECRET
+CLIENT_URL=http://localhost:5173
+JUDGE0_API_URL=https://ce.judge0.com
+
+3. Seed Coding Problems
+
+npm run seed
+
+4. Start the Backend
+
+npm run dev
+
+Backend URL:
+
+http://localhost:5000
+
+Health endpoint:
+
+http://localhost:5000/api/health
+
+5. Frontend Setup
+
+Open another terminal and move to the client folder:
+
 cd client
+
+Install dependencies:
+
 npm install
-npm run dev            # Start on port 5173
-```
 
-### 3. Judge0 Setup (Optional)
+Create a .env file inside the client folder:
 
-The server falls back to a **simulation mode** if Judge0 is unreachable, so you can develop and demo without it. To enable real code execution:
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
 
-**Option A — Self-hosted (Docker):**
-```bash
-docker run -d -p 2358:2358 judge0/judge0:latest
-```
-Set in `.env`:
-```
-JUDGE0_API_URL=http://localhost:2358
-JUDGE0_API_KEY=
-```
+Start the frontend:
 
-**Option B — RapidAPI:**
-Sign up at [RapidAPI Judge0](https://rapidapi.com/judge0-official/api/judge0-ce).
-Set in `.env`:
-```
-JUDGE0_API_URL=https://judge0-ce.p.rapidapi.com
-JUDGE0_API_KEY=your_key
-```
+npm run dev
 
-## API Endpoints
+Frontend URL:
 
-### Auth
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login |
-| GET  | `/api/auth/me` | Get current user |
-| GET  | `/api/auth/leaderboard` | Get leaderboard |
+http://localhost:5173
 
-### Problems
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/problems` | List all problems (with filters) |
-| GET | `/api/problems/slug/:slug` | Get problem by slug |
-| GET | `/api/problems/:id` | Get problem by ID |
+6. Open the Application
 
-### Rooms
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/rooms` | Create room |
-| POST | `/api/rooms/join/:roomCode` | Join room |
-| GET  | `/api/rooms/:roomCode` | Get room info |
-| GET  | `/api/rooms/my` | My rooms |
-| POST | `/api/rooms/:roomCode/versions` | Save version |
-| POST | `/api/rooms/:roomCode/versions/:versionId/restore` | Restore version |
-| GET  | `/api/rooms/:roomCode/versions` | Get version history |
-| POST | `/api/rooms/:roomCode/chat` | Post chat message |
-| GET  | `/api/rooms/:roomCode/contributions` | Get contribution analytics |
+Open:
 
-### Submissions
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/submissions/run` | Run code |
-| POST | `/api/submissions/test` | Test against visible test cases |
-| POST | `/api/submissions/submit` | Submit (all test cases) |
-| GET  | `/api/submissions` | My submission history |
-| GET  | `/api/submissions/:id` | Get single submission |
+http://localhost:5173
 
-### Reviews
-| Method | Path | Description |
-|--------|------|-------------|
-| POST  | `/api/reviews/:roomCode` | Create review |
-| GET   | `/api/reviews/:roomCode` | Get room reviews |
-| POST  | `/api/reviews/:reviewId/comments` | Add comment |
-| PATCH | `/api/reviews/:reviewId/comments/:commentId` | Toggle resolve |
+Register a new account, select a problem, and start coding.
 
-### Socket.io Events
+🔐 Environment Variables
 
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `room:join` | Client→Server | Join a room |
-| `code:edit` | Client→Server | Broadcast code changes |
-| `code:update` | Server→Client | Receive code changes |
-| `code:language` | Bidirectional | Language change |
-| `chat:message` | Bidirectional | Chat messages |
-| `typing:start/stop` | Bidirectional | Typing indicator |
-| `cursor:move` | Client→Server | Cursor position |
-| `version:saved` | Server→Client | Version snapshot saved |
-| `contribution:update` | Client→Server | Contribution delta |
-| `user:joined/left` | Server→Client | User presence |
-| `room:users` | Server→Client | Online users list |
+Backend
 
-## Languages Supported
-- Python 3
-- Java
-- C++
-- C
-- JavaScript (Node.js)
+PORT=
+MONGO_URI=
+JWT_SECRET=
+CLIENT_URL=
+JUDGE0_API_URL=
 
-## License
-This is an academic project. Free to use for educational purposes.
+Frontend
+
+VITE_API_URL=
+VITE_SOCKET_URL=
+
+Production frontend example:
+
+VITE_API_URL=https://collabcode-api-jok1.onrender.com/api
+VITE_SOCKET_URL=https://collabcode-api-jok1.onrender.com
+
+The backend CLIENT_URL should point to the deployed frontend URL.
+
+🔄 Main Workflows
+
+Problem Solving
+
+Login
+  ↓
+Select Problem
+  ↓
+Open Monaco Editor
+  ↓
+Write Code
+  ↓
+Run / Test
+  ↓
+Submit Solution
+
+Real-Time Collaboration
+
+Create Coding Room
+        ↓
+Invite Registered User
+        ↓
+User Accepts Invitation
+        ↓
+Both Users Join the Room
+        ↓
+Edit Code in Real Time
+        ↓
+Chat and Solve Together
+
+Request Help
+
+User Gets Stuck
+      ↓
+Request Help
+      ↓
+Another User Accepts
+      ↓
+Collaborative Room Created
+      ↓
+Helper Reviews and Edits Code
+      ↓
+Helper Sends Explanation
+      ↓
+Requester Reviews Solution
+      ↓
+Resolve Help or Ask Again
+
+⚡ Real-Time Communication
+
+Socket.io is used for:
+
+Code synchronization
+
+Room participation
+
+Online user tracking
+
+Real-time chat
+
+Collaboration events
+
+Help-request events
+
+Notifications
+
+🔐 Authentication
+
+CollabCode uses JWT-based authentication.
+
+After successful login, a JWT token is generated and used for protected REST API requests and Socket.io authentication.
+
+Passwords are hashed using bcryptjs before being stored in the database.
+
+▶️ Code Execution
+
+User code is executed using the Judge0 API.
+
+The backend sends source code, programming language, and input/test cases to Judge0 and receives program output, compilation errors, runtime errors, and execution status.
+
+🗄️ Database Collections
+
+users
+problems
+rooms
+submissions
+reviews
+contributions
+helprequests
+notifications
+roominvitations
+
+💡 Technical Highlights
+
+Real-Time Code Synchronization
+
+Users inside the same coding room can see code changes in real time using Socket.io.
+
+Registered User Invitations
+
+Users can search for registered users and send collaboration invitations. The invited user can accept or decline before joining the room.
+
+Help Request System
+
+A user who gets stuck can request help. Another user can accept the request, collaborate in a room, and provide:
+
+Problem found
+
+Location of the issue
+
+Why the code was incorrect
+
+Changes made
+
+Solution explanation
+
+Test result
+
+The requester can then resolve the request or ask again.
+
+Notification System
+
+Notifications are generated for important events such as help requests, help acceptance, solution completion, room invitations, invitation responses, and reviews.
+
+🌐 Deployment
+
+React Frontend
+     │
+     │ HTTPS + Socket.io
+     ▼
+Render Backend
+     │
+     ├─────────────► Judge0 API
+     │
+     ▼
+MongoDB Atlas
+
+Frontend
+
+Deployed as a Render Static Site.
+
+Backend
+
+Deployed as a Render Web Service.
+
+Backend API:
+
+https://collabcode-api-jok1.onrender.com
+
+Health endpoint:
+
+https://collabcode-api-jok1.onrender.com/api/health
+
+Database
+
+MongoDB Atlas is used as the cloud database.
+
+Code Execution
+
+Judge0 is used for code execution.
+
+🧩 Challenges Solved
+
+Real-time code synchronization
+
+Preventing duplicate Socket.io listeners
+
+Avoiding duplicate chat messages
+
+Tracking online users correctly
+
+JWT authentication for API and socket connections
+
+MongoDB Atlas integration
+
+CORS configuration
+
+Production environment-variable setup
+
+Judge0 integration
+
+Collaboration invitation workflow
+
+Help request and resolution workflow
+
+Real-time notification delivery
+
+Separate frontend and backend deployment
+
+👩‍💻 Author
+
+Saniya Salunkhe
+
+Computer Science & Engineering Student
+
+GitHub:
+https://github.com/saniya-salunkhe
+
+📄 License
+
+This project was developed for educational and academic purposes.
